@@ -488,7 +488,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
       }
 
       // Auto reveal toolbar if pushing into top edge
-      if (newY <= 15 && !_showToolbar) {
+      if (newY <= 50 && !_showToolbar) {
         setState(() {
           _showToolbar = true;
         });
@@ -507,6 +507,17 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
   /// Simulate a click at the virtual cursor's current on-screen location
   Future<void> _simulateClick() async {
     setState(() => _isClicking = true);
+
+    // Handle click on top-right menu toggle button
+    final screenSize = MediaQuery.of(context).size;
+    if (_cursorPos.dy <= 60 && _cursorPos.dx >= (screenSize.width - 170)) {
+      setState(() {
+        _showToolbar = !_showToolbar;
+      });
+      await Future.delayed(const Duration(milliseconds: 160));
+      if (mounted) setState(() => _isClicking = false);
+      return;
+    }
 
     // Convert flutter screen coords to CSS webview coords
     final x = _cursorPos.dx.toInt();
@@ -556,8 +567,15 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
         key == LogicalKeyboardKey.arrowRight;
 
     if (event is KeyDownEvent) {
-      // Menu key toggles toolbar
+      // Menu key toggles toolbar (Remote Menu, M key, ContextMenu, MediaMenu, Esc, F1, F2, Info)
       if (key == LogicalKeyboardKey.contextMenu ||
+          key == LogicalKeyboardKey.mediaTopMenu ||
+          key == LogicalKeyboardKey.tvContentsMenu ||
+          key == LogicalKeyboardKey.keyM ||
+          key == LogicalKeyboardKey.escape ||
+          key == LogicalKeyboardKey.f1 ||
+          key == LogicalKeyboardKey.f2 ||
+          key == LogicalKeyboardKey.f10 ||
           key == LogicalKeyboardKey.info ||
           key == LogicalKeyboardKey.help) {
         setState(() {
@@ -834,35 +852,48 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                 top: 0,
                 right: 24,
                 child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: () {
                     setState(() => _showToolbar = !_showToolbar);
                   },
                   child: Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
+                      color: const Color(0xFF1E293B).withValues(alpha: 0.95),
                       borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(8),
-                        bottomRight: Radius.circular(8),
+                        bottomLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
                       ),
+                      border: Border.all(
+                        color: const Color(0xFFE50914).withValues(alpha: 0.7),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE50914).withValues(alpha: 0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           _showToolbar
-                              ? Icons.keyboard_arrow_up
+                              ? Icons.keyboard_arrow_up_rounded
                               : Icons.menu_rounded,
-                          size: 16,
-                          color: Colors.white70,
+                          size: 18,
+                          color: Colors.white,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 6),
                         Text(
-                          _showToolbar ? 'Hide Bar' : 'Menu / Bar',
+                          _showToolbar ? 'Hide Bar' : 'Menu / Bar (M)',
                           style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 11,
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
