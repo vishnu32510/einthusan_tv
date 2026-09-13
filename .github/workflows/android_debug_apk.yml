@@ -28,10 +28,17 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Create .env file
+      - name: Restore .env from secret
+        env:
+          ENV_B64: ${{ secrets.ENV_B64 }}
         run: |
-          echo "EINTHUSAN_EMAIL=${{ secrets.EINTHUSAN_EMAIL }}" >> .env
-          echo "EINTHUSAN_PASSWORD=${{ secrets.EINTHUSAN_PASSWORD }}" >> .env
+          if [ -n "$ENV_B64" ]; then
+            echo "$ENV_B64" | base64 -d > .env
+          elif [ -f .env.example ]; then
+            cp .env.example .env
+          else
+            touch .env
+          fi
 
       - name: Install dependencies
         run: flutter pub get
