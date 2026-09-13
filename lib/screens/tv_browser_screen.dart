@@ -1450,6 +1450,160 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                             ),
                           ],
                         ),
+                        const SizedBox(height: 28),
+
+                        // TV Installation Steps Card
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(22),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF090D16).withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFF334155).withValues(alpha: 0.7),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: const [
+                                  Icon(
+                                    Icons.smart_screen_rounded,
+                                    color: Color(0xFF38BDF8),
+                                    size: 22,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'For TCL / Android TV / Fire TV:',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Step 1: Direct on TV
+                              RichText(
+                                text: const TextSpan(
+                                  style: TextStyle(
+                                    color: Color(0xFFCBD5E1),
+                                    fontSize: 14,
+                                    height: 1.5,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: 'Direct on TV: ',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: 'Open the ',
+                                    ),
+                                    TextSpan(
+                                      text: 'Downloader',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF38BDF8),
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: ' app on your TV and type or click below:',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Clickable URL with Copy Button
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF04060B),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: const Color(0xFF1E293B),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => _openUrl(
+                                          'https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk',
+                                        ),
+                                        child: const Text(
+                                          'https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk',
+                                          style: TextStyle(
+                                            color: Color(0xFF60A5FA),
+                                            fontSize: 13,
+                                            fontFamily: 'monospace',
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.copy_rounded,
+                                        size: 18,
+                                        color: Color(0xFF94A3B8),
+                                      ),
+                                      tooltip: 'Copy Link',
+                                      onPressed: () {
+                                        Clipboard.setData(const ClipboardData(
+                                          text: 'https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk',
+                                        ));
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('APK download link copied to clipboard!'),
+                                            backgroundColor: Color(0xFF10B981),
+                                            duration: Duration(seconds: 2),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+
+                              // Step 2: Via USB
+                              RichText(
+                                text: const TextSpan(
+                                  style: TextStyle(
+                                    color: Color(0xFFCBD5E1),
+                                    fontSize: 14,
+                                    height: 1.5,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: 'Via USB: ',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: 'Click the green button above to download the APK onto a USB drive and plug it into your TV.',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
