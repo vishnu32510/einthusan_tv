@@ -97,6 +97,24 @@ const INJECTED_HEAD = `
   body {
     padding-top: 56px !important;
   }
+
+  /* HARD KILL ALL PREMIUM SUBSCRIPTION PROMPTS AND AD MODALS */
+  #discount-offer-popup,
+  #premium-notif-popup,
+  .adspace-lb,
+  [id*="venatus"],
+  [class*="adspace"],
+  [data-id*="goadx"],
+  .qc-cmp2-container,
+  #cmp-modal,
+  .adblock-warning {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    max-height: 0 !important;
+  }
 </style>
 `;
 
@@ -136,7 +154,34 @@ const INJECTED_BODY = `
       }
     });
 
-    // 2. TOP MENU SHOW / HIDE & REMOTE KEY CONTROL
+    // 2. PERMANENTLY SUPPRESS PREMIUM SUBSCRIPTION PROMPTS IN LOCALSTORAGE
+    try {
+      var tenYears = Date.now() + (10 * 365 * 24 * 60 * 60 * 1000);
+      localStorage.setItem('premium-notif', JSON.stringify({ value: 'true', expiry: tenYears }));
+      localStorage.setItem('discount-offer', JSON.stringify({ value: 'true', expiry: tenYears }));
+    } catch(e) {}
+
+    // Hook jQuery MagnificPopup to block premium and offer popups before they ever render
+    function hookMagnificPopup() {
+      if (window.$ && window.$.magnificPopup && window.$.magnificPopup.open && !window._magnificHooked) {
+        window._magnificHooked = true;
+        var origOpen = window.$.magnificPopup.open;
+        window.$.magnificPopup.open = function(config) {
+          if (config && config.items) {
+            var src = (typeof config.items === 'string') ? config.items : (config.items.src || '');
+            if (src.includes('premium') || src.includes('discount') || src.includes('offer')) {
+              console.log('[Nungu TV] Prevented subscription modal:', src);
+              return;
+            }
+          }
+          return origOpen.apply(this, arguments);
+        };
+      }
+    }
+    hookMagnificPopup();
+    setInterval(hookMagnificPopup, 1000);
+
+    // 3. TOP MENU SHOW / HIDE & REMOTE KEY CONTROL
     var bar = document.getElementById('nungu-tv-bar');
     var hideTimeout = null;
 
@@ -159,19 +204,18 @@ const INJECTED_BODY = `
       }
     };
 
-    bar.addEventListener('mouseenter', function() { window._isHoveringBar = true; });
-    bar.addEventListener('mouseleave', function() { window._isHoveringBar = false; resetHideTimer(); });
+    if (bar) {
+      bar.addEventListener('mouseenter', function() { window._isHoveringBar = true; });
+      bar.addEventListener('mouseleave', function() { window._isHoveringBar = false; resetHideTimer(); });
+    }
 
-    // Show menu when mouse moves to very top of TV
     window.addEventListener('mousemove', function(e) {
       if (e.clientY < 20) {
         resetHideTimer();
       }
     });
 
-    // Remote Control Buttons
     window.addEventListener('keydown', function(e) {
-      // Key 461 = LG Remote Back Button
       if (e.keyCode === 461) {
         if (window.history.length > 1) {
           window.history.back();
@@ -180,7 +224,6 @@ const INJECTED_BODY = `
         }
         return;
       }
-      // Key 404 (Menu) or 'M' or Up arrow when at top
       if (e.keyCode === 404 || e.key === 'm' || e.key === 'M') {
         window._toggleBar();
       }
@@ -188,14 +231,14 @@ const INJECTED_BODY = `
 
     resetHideTimer();
 
-    // 3. ZOOM CONTROL
+    // 4. ZOOM CONTROL
     var currentZoom = 1.0;
     window._toggleZoom = function() {
       currentZoom = (currentZoom === 1.0) ? 1.15 : 1.0;
       document.body.style.zoom = currentZoom;
     };
 
-    // 4. AUTO-LOGIN & CREDENTIAL INJECTION
+    // 5. AUTO-LOGIN & CREDENTIAL INJECTION
     var accountEmail = 'vishnu32510@gmail.com';
     var accountPass = 'WHeSHRA!u8mL3Xc';
 
@@ -224,14 +267,12 @@ const INJECTED_BODY = `
       }
     };
 
-    // Check login state on load and perform automatic login
     function checkLoginStatus() {
       var userPopup = document.getElementById('login-popup');
       var isLoggedOut = !userPopup || !userPopup.getAttribute('data-user') || userPopup.getAttribute('data-user') === '';
       var btn = document.getElementById('ntv-login-btn');
       if (isLoggedOut) {
         if (btn) btn.textContent = '🔑 Sign In';
-        // Auto-login proactively!
         if (window.Page && window.Page.send) {
           console.log('[Nungu TV] Triggering background auto-login...');
           window.Page.send('Login', {Email: accountEmail, Password: accountPass});
@@ -244,31 +285,47 @@ const INJECTED_BODY = `
       }
     }
 
-    setTimeout(checkLoginStatus, 1000);
+    setTimeout(checkLoginStatus, 1200);
 
-    // 5. 10-MINUTE PLAYBACK WATCHDOG
+    // 6. CONTINUOUS WATCHDOG: DISMISS OFFERS, RESUME PLAYBACK, REMOVE BLOCKERS
     setInterval(function() {
-      // Auto-dismiss promo popups
-      var offer = document.getElementById('pn-offer-close') || document.getElementById('pn-close') || document.getElementById('pn-understand');
-      if (offer && offer.offsetParent !== null) offer.click();
+      // Auto-click dismiss buttons
+      var understandBtn = document.getElementById('pn-understand');
+      if (understandBtn) understandBtn.click();
 
-      // Clear 10-min interruption popup
+      var closeBtn = document.getElementById('pn-close') || document.getElementById('pn-offer-close');
+      if (closeBtn) closeBtn.click();
+
+      // Remove popup overlays if open
+      document.querySelectorAll('.mfp-wrap, .mfp-bg').forEach(function(wrap) {
+        var text = wrap.textContent || '';
+        if (text.includes('PREMIUM') || text.includes('DISCOUNT') || text.includes('UNDERSTAND') || text.includes('OFFER') || text.includes('Support')) {
+          wrap.remove();
+          document.documentElement.style.overflow = 'auto';
+        }
+      });
+
+      // Clear login interruption popup if shown
       var pop = document.getElementById('login-popup');
       if (pop && (pop.classList.contains('mfp-ready') || pop.style.display === 'block' || !pop.classList.contains('mfp-hide'))) {
         window._doNunguLogin();
         if (window.$ && window.$.magnificPopup) window.$.magnificPopup.close();
       }
 
-      // Auto-resume video if paused by modal
+      // Auto-resume video if paused by a prompt
       var vid = document.querySelector('video') || document.getElementById('UIVideoPlayer');
-      if (vid && vid.paused && !vid.ended && vid.currentTime > 5) {
-        var blk = document.querySelector('.mfp-wrap, .mfp-bg');
-        if (blk) {
-          blk.remove();
-          vid.play().catch(function(){});
-        }
+      if (vid && vid.paused && !vid.ended && vid.currentTime > 3 && !window._userIntendedPause) {
+        vid.play().catch(function(){});
       }
-    }, 1500);
+    }, 500);
+
+    // Track intentional user pause via remote
+    document.addEventListener('click', function(e) {
+      if (e.target && (e.target.classList.contains('vjs-play-control') || e.target.closest('.vjs-play-control'))) {
+        window._userIntendedPause = true;
+        setTimeout(function() { window._userIntendedPause = false; }, 10000);
+      }
+    });
   })();
 </script>
 `;
@@ -299,7 +356,7 @@ const server = http.createServer((req, res) => {
     headers['access-control-allow-origin'] = '*';
     headers['access-control-allow-credentials'] = 'true';
 
-    // REWRITE COOKIES TO WORK ON LOCALHOST / 127.0.0.1
+    // REWRITE COOKIES
     if (headers['set-cookie']) {
       headers['set-cookie'] = headers['set-cookie'].map(cookieStr => {
         return cookieStr
@@ -309,7 +366,7 @@ const server = http.createServer((req, res) => {
       });
     }
 
-    // REWRITE 307 / 302 REDIRECT LOCATIONS
+    // REWRITE REDIRECTS
     if (headers['location'] && headers['location'].startsWith('https://einthusan.tv')) {
       headers['location'] = headers['location'].replace('https://einthusan.tv', '');
     }
@@ -353,5 +410,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`Nungu TV Local Proxy with Cookie Rewriting & Top Bar active on http://127.0.0.1:${PORT}`);
+  console.log(`Nungu TV Local Proxy with Anti-Premium Watchdog active on http://127.0.0.1:${PORT}`);
 });
