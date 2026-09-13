@@ -1400,13 +1400,34 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              icon: const Icon(Icons.download_rounded),
+                              icon: const Icon(Icons.android_rounded),
                               label: const Text(
                                 'Download Android TV APK',
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               onPressed: () => _openUrl(
-                                'https://github.com/vishnu32510/einthusan_tv/releases',
+                                'https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk',
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFE50914),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22,
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.tv_rounded),
+                              label: const Text(
+                                'Download LG webOS IPK',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              onPressed: () => _openUrl(
+                                'https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-webOS-v1.0.0.ipk',
                               ),
                             ),
                             OutlinedButton.icon(
@@ -1422,9 +1443,9 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                                 ),
                               ),
                               icon: const Icon(Icons.code_rounded),
-                              label: const Text('GitHub Source'),
+                              label: const Text('All GitHub Releases'),
                               onPressed: () => _openUrl(
-                                'https://github.com/vishnu32510/einthusan_tv',
+                                'https://github.com/vishnu32510/einthusan_tv/releases',
                               ),
                             ),
                           ],
@@ -1506,6 +1527,18 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
         if (!isMobile)
           Row(
             children: [
+              TextButton.icon(
+                icon: const Icon(Icons.android_rounded, size: 16, color: Color(0xFF10B981)),
+                label: const Text('Android APK', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                onPressed: () => _openUrl('https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk'),
+              ),
+              const SizedBox(width: 6),
+              TextButton.icon(
+                icon: const Icon(Icons.tv_rounded, size: 16, color: Color(0xFF38BDF8)),
+                label: const Text('LG webOS IPK', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                onPressed: () => _openUrl('https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-webOS-v1.0.0.ipk'),
+              ),
+              const SizedBox(width: 8),
               TextButton(
                 onPressed: () => _openUrl('terms.html'),
                 child: const Text(
@@ -1517,7 +1550,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
               TextButton(
                 onPressed: () => _openUrl('privacy.html'),
                 child: const Text(
-                  'Privacy Policy',
+                  'Privacy',
                   style: TextStyle(color: Color(0xFF94A3B8)),
                 ),
               ),
