@@ -1,0 +1,783 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+
+class TvBrowserScreen extends StatefulWidget {
+  const TvBrowserScreen({super.key});
+
+  @override
+  State<TvBrowserScreen> createState() => _TvBrowserScreenState();
+}
+
+class _TvBrowserScreenState extends State<TvBrowserScreen>
+    with SingleTickerProviderStateMixin {
+  static const String initialUrl =
+      'https://einthusan.tv/movie/browse/?lang=tamil';
+
+  late final WebViewController _controller;
+  final FocusNode _focusNode = FocusNode();
+
+  // Page Loading State
+  bool _isLoading = true;
+  double _loadingProgress = 0.0;
+  String? _errorMessage;
+
+  // Virtual Cursor State
+  Offset _cursorPos = const Offset(400, 300);
+  bool _isClicking = false;
+  bool _isCursorMode = true; // true: Virtual Cursor, false: Direct Scroll
+  double _cursorSpeed = 16.0; // Base speed per tick
+  Timer? _moveTimer;
+  final Set<LogicalKeyboardKey> _activeDirectionKeys = {};
+
+  // Toolbar state
+  bool _showToolbar = false;
+  double _zoomLevel = 1.0;
+  DateTime? _lastBackPressTime;
+
+  // Custom Desktop/TV User-Agent
+  static const String tvDesktopUserAgent =
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeWebView();
+    _startMovementLoop();
+  }
+
+  void _initializeWebView() {
+    late final PlatformWebViewControllerCreationParams params;
+    if (WebViewPlatform.instance is AndroidWebViewPlatform) {
+      params = AndroidWebViewControllerCreationParams();
+    } else {
+      params = const PlatformWebViewControllerCreationParams();
+    }
+
+    final WebViewController controller =
+        WebViewController.fromPlatformCreationParams(params);
+
+    controller
+      .setJavaScriptMode(JavaScriptMode.unrestricted);
+    controller.setUserAgent(tvDesktopUserAgent);
+
+    // Safely set background color (catch UnimplementedError on macOS/desktop)
+    try {
+      controller.setBackgroundColor(const Color(0xFF0D1117));
+    } catch (_) {
+      // Ignored if platform does not support setOpaque / setBackgroundColor
+    }
+
+    controller.setNavigationDelegate(
+        NavigationDelegate(
+          onProgress: (int progress) {
+            setState(() {
+              _loadingProgress = progress / 100.0;
+            });
+          },
+          onPageStarted: (String url) {
+            setState(() {
+              _isLoading = true;
+              _errorMessage = null;
+            });
+          },
+          onPageFinished: (String url) {
+            setState(() {
+              _isLoading = false;
+            });
+            _injectTvOptimizations();
+          },
+          onWebResourceError: (WebResourceError error) {
+            if (error.isForMainFrame ?? true) {
+              setState(() {
+                _isLoading = false;
+                _errorMessage =
+                    'Unable to load Einthusan (${error.description}).\nPlease check your internet connection.';
+              });
+            }
+          },
+          onNavigationRequest: (NavigationRequest request) {
+            return NavigationDecision.navigate;
+          },
+        ),
+      );
+    controller.loadRequest(Uri.parse(initialUrl));
+
+    // Enable hardware acceleration & media playback for Android
+    if (controller.platform is AndroidWebViewController) {
+      final androidController = controller.platform as AndroidWebViewController;
+      androidController.setMediaPlaybackRequiresUserGesture(false);
+      AndroidWebViewCookieManager(
+        const PlatformWebViewCookieManagerCreationParams(),
+      ).setAcceptThirdPartyCookies(androidController, true);
+    }
+
+    _controller = controller;
+  }
+
+  /// Inject CSS & JS optimizations for TV display (smoother scrolling, enlarged touch targets)
+  void _injectTvOptimizations() {
+    _controller.runJavaScript('''
+      (function() {
+        // Intercept window.open so third-party OAuth popups (Google, Facebook) stay in the webview
+        window.open = function(url) {
+          if (url) { window.location.href = url; }
+          return null;
+        };
+
+        // Ensure target=_blank links open in this webview
+        document.querySelectorAll('a[target="_blank"]').forEach(function(a) {
+          a.setAttribute('target', '_self');
+        });
+
+        // Smooth scroll styling
+        document.documentElement.style.scrollBehavior = 'smooth';
+      })();
+    ''');
+    _applyZoom();
+  }
+
+  void _applyZoom() {
+    _controller.runJavaScript('''
+      document.body.style.zoom = '$_zoomLevel';
+    ''');
+  }
+
+  /// Continuous ticker for smooth virtual cursor motion
+  void _startMovementLoop() {
+    _moveTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+      if (!_isCursorMode || _activeDirectionKeys.isEmpty || !mounted) return;
+
+      double dx = 0;
+      double dy = 0;
+
+      if (_activeDirectionKeys.contains(LogicalKeyboardKey.arrowLeft)) {
+        dx -= _cursorSpeed;
+      }
+      if (_activeDirectionKeys.contains(LogicalKeyboardKey.arrowRight)) {
+        dx += _cursorSpeed;
+      }
+      if (_activeDirectionKeys.contains(LogicalKeyboardKey.arrowUp)) {
+        dy -= _cursorSpeed;
+      }
+      if (_activeDirectionKeys.contains(LogicalKeyboardKey.arrowDown)) {
+        dy += _cursorSpeed;
+      }
+
+      if (dx == 0 && dy == 0) return;
+
+      final screenSize = MediaQuery.of(context).size;
+      final newX = (_cursorPos.dx + dx).clamp(10.0, screenSize.width - 10.0);
+      final newY = (_cursorPos.dy + dy).clamp(10.0, screenSize.height - 10.0);
+
+      // Auto-scroll when pointer pushes against edges
+      if (newY >= screenSize.height - 20) {
+        _scrollPage(220);
+      } else if (newY <= 20) {
+        _scrollPage(-220);
+      }
+
+      // Auto reveal toolbar if pushing into top edge
+      if (newY <= 15 && !_showToolbar) {
+        setState(() {
+          _showToolbar = true;
+        });
+      }
+
+      setState(() {
+        _cursorPos = Offset(newX, newY);
+      });
+    });
+  }
+
+  void _scrollPage(int yDelta) {
+    _controller.runJavaScript('window.scrollBy({top: $yDelta, behavior: "smooth"});');
+  }
+
+  /// Simulate a click at the virtual cursor's current on-screen location
+  Future<void> _simulateClick() async {
+    setState(() => _isClicking = true);
+
+    // Convert flutter screen coords to CSS webview coords
+    final x = _cursorPos.dx.toInt();
+    final y = _cursorPos.dy.toInt();
+
+    final clickScript = '''
+      (function() {
+        var x = $x;
+        var y = $y;
+        var el = document.elementFromPoint(x, y);
+        if (el) {
+          el.focus();
+          ['mouseenter', 'mouseover', 'mousedown', 'mouseup', 'click'].forEach(function(eventName) {
+            var evt = new MouseEvent(eventName, {
+              view: window,
+              bubbles: true,
+              cancelable: true,
+              clientX: x,
+              clientY: y
+            });
+            el.dispatchEvent(evt);
+          });
+          var anchor = el.closest('a');
+          if (anchor && anchor.href && !anchor.href.startsWith('javascript:')) {
+            window.location.href = anchor.href;
+          }
+        }
+      })();
+    ''';
+
+    await _controller.runJavaScript(clickScript);
+
+    await Future.delayed(const Duration(milliseconds: 160));
+    if (mounted) {
+      setState(() => _isClicking = false);
+    }
+  }
+
+  /// Handle TV Remote Key events
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    final key = event.logicalKey;
+
+    // Detect direction keys
+    final isDirectionKey = key == LogicalKeyboardKey.arrowUp ||
+        key == LogicalKeyboardKey.arrowDown ||
+        key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.arrowRight;
+
+    if (event is KeyDownEvent) {
+      // Menu key toggles toolbar
+      if (key == LogicalKeyboardKey.contextMenu ||
+          key == LogicalKeyboardKey.info ||
+          key == LogicalKeyboardKey.help) {
+        setState(() {
+          _showToolbar = !_showToolbar;
+        });
+        return KeyEventResult.handled;
+      }
+
+      // Enter / Select / D-pad Center
+      if (key == LogicalKeyboardKey.select ||
+          key == LogicalKeyboardKey.enter ||
+          key == LogicalKeyboardKey.numpadEnter ||
+          key == LogicalKeyboardKey.space ||
+          key == LogicalKeyboardKey.gameButtonA) {
+        if (_showToolbar) {
+          // Let toolbar handle its own focus
+          return KeyEventResult.ignored;
+        }
+        if (_isCursorMode) {
+          _simulateClick();
+        } else {
+          // In direct scroll mode, select acts as click at center
+          _simulateClick();
+        }
+        return KeyEventResult.handled;
+      }
+
+      // Direct Scroll Mode handlers
+      if (!_isCursorMode && isDirectionKey) {
+        if (key == LogicalKeyboardKey.arrowDown) {
+          _scrollPage(300);
+          return KeyEventResult.handled;
+        } else if (key == LogicalKeyboardKey.arrowUp) {
+          _scrollPage(-300);
+          return KeyEventResult.handled;
+        } else if (key == LogicalKeyboardKey.arrowLeft) {
+          _controller.canGoBack().then((can) {
+            if (can) _controller.goBack();
+          });
+          return KeyEventResult.handled;
+        } else if (key == LogicalKeyboardKey.arrowRight) {
+          _controller.canGoForward().then((can) {
+            if (can) _controller.goForward();
+          });
+          return KeyEventResult.handled;
+        }
+      }
+
+      // Cursor Mode direction keys
+      if (_isCursorMode && isDirectionKey) {
+        _activeDirectionKeys.add(key);
+        return KeyEventResult.handled;
+      }
+
+      // Media keys (Play/Pause)
+      if (key == LogicalKeyboardKey.mediaPlayPause ||
+          key == LogicalKeyboardKey.mediaPlay ||
+          key == LogicalKeyboardKey.mediaPause) {
+        _controller.runJavaScript('''
+          (function() {
+            var v = document.querySelector('video');
+            if (v) {
+              if (v.paused) { v.play(); } else { v.pause(); }
+            }
+          })();
+        ''');
+        return KeyEventResult.handled;
+      }
+    } else if (event is KeyUpEvent) {
+      if (isDirectionKey) {
+        _activeDirectionKeys.remove(key);
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  /// Handle Back button press on TV remote
+  Future<bool> _handleWillPop() async {
+    if (_showToolbar) {
+      setState(() => _showToolbar = false);
+      return false;
+    }
+
+    final canGoBack = await _controller.canGoBack();
+    if (canGoBack) {
+      await _controller.goBack();
+      return false;
+    }
+
+    final now = DateTime.now();
+    if (_lastBackPressTime == null ||
+        now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+      _lastBackPressTime = now;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Press BACK again to exit Einthusan TV'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Color(0xFF1F2937),
+          ),
+        );
+      }
+      return false;
+    }
+
+    return true;
+  }
+
+  @override
+  void dispose() {
+    _moveTimer?.cancel();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await _handleWillPop();
+        if (shouldExit && context.mounted) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0D1117),
+        body: Focus(
+          focusNode: _focusNode,
+          autofocus: true,
+          onKeyEvent: _handleKeyEvent,
+          child: Stack(
+            children: [
+              // Main WebView
+              Positioned.fill(
+                child: WebViewWidget(controller: _controller),
+              ),
+
+              // Loading Progress Bar
+              if (_isLoading)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: LinearProgressIndicator(
+                    value: _loadingProgress > 0 ? _loadingProgress : null,
+                    minHeight: 4,
+                    backgroundColor: Colors.transparent,
+                    color: const Color(0xFFE50914),
+                  ),
+                ),
+
+              // Error Overlay
+              if (_errorMessage != null)
+                Positioned.fill(
+                  child: Container(
+                    color: const Color(0xFF0D1117).withValues(alpha: 0.96),
+                    padding: const EdgeInsets.all(32),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.cloud_off_rounded,
+                            size: 72,
+                            color: Color(0xFFEF4444),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Connection Issue',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFF9CA3AF),
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE50914),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                                vertical: 14,
+                              ),
+                            ),
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Try Again'),
+                            onPressed: () {
+                              setState(() {
+                                _errorMessage = null;
+                                _isLoading = true;
+                              });
+                              _controller.reload();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+              // TV Overlay Toolbar
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                top: _showToolbar ? 0 : -90,
+                left: 0,
+                right: 0,
+                child: _buildTvToolbar(),
+              ),
+
+              // Virtual Cursor
+              if (_isCursorMode && _errorMessage == null)
+                Positioned(
+                  left: _cursorPos.dx - 14,
+                  top: _cursorPos.dy - 14,
+                  child: IgnorePointer(
+                    child: AnimatedScale(
+                      scale: _isClicking ? 0.75 : 1.0,
+                      duration: const Duration(milliseconds: 120),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _isClicking
+                              ? const Color(0xFFE50914).withValues(alpha: 0.9)
+                              : Colors.white.withValues(alpha: 0.85),
+                          border: Border.all(
+                            color: _isClicking ? Colors.white : Colors.black,
+                            width: 2.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _isClicking ? Colors.white : Colors.red,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Top edge pull hint / Toolbar toggle hotspot
+              Positioned(
+                top: 0,
+                right: 24,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _showToolbar = !_showToolbar);
+                  },
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(8),
+                        bottomRight: Radius.circular(8),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _showToolbar
+                              ? Icons.keyboard_arrow_up
+                              : Icons.menu_rounded,
+                          size: 16,
+                          color: Colors.white70,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _showToolbar ? 'Hide Bar' : 'Menu / Bar',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// TV Navigation Toolbar
+  Widget _buildTvToolbar() {
+    return Container(
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161B22).withValues(alpha: 0.96),
+        border: const Border(
+          bottom: BorderSide(color: Color(0xFF30363D), width: 1.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.6),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+          // Logo & Title
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE50914),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.movie_filter_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'EINTHUSAN TV',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 24),
+
+          // Navigation buttons
+          _buildToolbarButton(
+            icon: Icons.arrow_back_rounded,
+            label: 'Back',
+            onTap: () async {
+              if (await _controller.canGoBack()) {
+                _controller.goBack();
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          _buildToolbarButton(
+            icon: Icons.arrow_forward_rounded,
+            label: 'Forward',
+            onTap: () async {
+              if (await _controller.canGoForward()) {
+                _controller.goForward();
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          _buildToolbarButton(
+            icon: Icons.refresh_rounded,
+            label: 'Reload',
+            onTap: () => _controller.reload(),
+          ),
+          const SizedBox(width: 8),
+          _buildToolbarButton(
+            icon: Icons.home_rounded,
+            label: 'Tamil Home',
+            onTap: () => _controller.loadRequest(Uri.parse(initialUrl)),
+          ),
+          const SizedBox(width: 8),
+          _buildToolbarButton(
+            icon: Icons.account_circle_rounded,
+            label: 'Login',
+            onTap: () {
+              _controller.runJavaScript("""
+                (function() {
+                  var popup = document.getElementById('login-popup');
+                  if (popup) {
+                    popup.classList.remove('mfp-hide');
+                    popup.style.display = 'block';
+                  } else {
+                    window.location.href = 'https://einthusan.tv/login/?lang=tamil';
+                  }
+                })();
+              """);
+            },
+          ),
+
+          const SizedBox(width: 32),
+
+          // Mode Switch (Cursor vs Direct Scroll)
+          _buildToolbarButton(
+            icon: _isCursorMode
+                ? Icons.mouse_rounded
+                : Icons.swap_vert_rounded,
+            label: _isCursorMode ? 'Cursor Mode' : 'Scroll Mode',
+            color: _isCursorMode
+                ? const Color(0xFF3B82F6)
+                : const Color(0xFF10B981),
+            onTap: () {
+              setState(() {
+                _isCursorMode = !_isCursorMode;
+              });
+            },
+          ),
+          const SizedBox(width: 8),
+
+          // Cursor Speed Switcher
+          if (_isCursorMode)
+            _buildToolbarButton(
+              icon: Icons.speed_rounded,
+              label: '${_cursorSpeed == 10.0 ? "1x" : _cursorSpeed == 16.0 ? "1.5x" : "2.5x"} Speed',
+              onTap: () {
+                setState(() {
+                  if (_cursorSpeed == 10.0) {
+                    _cursorSpeed = 16.0;
+                  } else if (_cursorSpeed == 16.0) {
+                    _cursorSpeed = 26.0;
+                  } else {
+                    _cursorSpeed = 10.0;
+                  }
+                });
+              },
+            ),
+          const SizedBox(width: 8),
+
+          // Zoom Out
+          _buildToolbarButton(
+            icon: Icons.zoom_out_rounded,
+            label: 'Zoom -',
+            onTap: () {
+              setState(() {
+                _zoomLevel = (_zoomLevel - 0.1).clamp(0.7, 1.5);
+              });
+              _applyZoom();
+            },
+          ),
+          const SizedBox(width: 8),
+
+          // Zoom In
+          _buildToolbarButton(
+            icon: Icons.zoom_in_rounded,
+            label: 'Zoom +',
+            onTap: () {
+              setState(() {
+                _zoomLevel = (_zoomLevel + 0.1).clamp(0.7, 1.5);
+              });
+              _applyZoom();
+            },
+          ),
+          const SizedBox(width: 12),
+
+          // Close bar
+          IconButton(
+            icon: const Icon(Icons.close_rounded, color: Colors.white70),
+            tooltip: 'Hide Toolbar',
+            onPressed: () {
+              setState(() => _showToolbar = false);
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+  Widget _buildToolbarButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: (color ?? const Color(0xFF21262D)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: Colors.white),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
