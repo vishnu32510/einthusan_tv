@@ -18,7 +18,7 @@
         android:required="false" />
 
     <application
-        android:label="Einthusan TV"
+        android:label="Nungu TV"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/tv_banner"

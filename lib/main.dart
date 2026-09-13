@@ -35,7 +35,7 @@ class EinthusanTvApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Einthusan TV',
+      title: 'Nungu TV',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,

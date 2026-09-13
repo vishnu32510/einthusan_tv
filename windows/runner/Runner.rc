@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.einthusan.tv" "\0"
-            VALUE "FileDescription", "einthusan_tv" "\0"
+            VALUE "CompanyName", "com.nungu" "\0"
+            VALUE "FileDescription", "Nungu TV" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "einthusan_tv" "\0"
+            VALUE "InternalName", "nungu_tv" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.einthusan.tv. All rights reserved." "\0"
             VALUE "OriginalFilename", "einthusan_tv.exe" "\0"
-            VALUE "ProductName", "einthusan_tv" "\0"
+            VALUE "ProductName", "Nungu TV" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
