@@ -1,3 +1,4 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -41,9 +42,16 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
   static const String tvDesktopUserAgent =
       'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 
-  // Account Credentials for Background Auto-Login & 10-minute Lock Bypass
-  static const String _accountEmail = 'vishnu32510@gmail.com';
-  static const String _accountPassword = r'WHeSHRA!u8mL3Xc';
+  // Account Credentials for Background Auto-Login & 10-minute Lock Bypass (loaded from .env)
+  static String get _accountEmail {
+    if (!dotenv.isInitialized) return '';
+    return dotenv.env['EINTHUSAN_EMAIL']?.trim() ?? '';
+  }
+
+  static String get _accountPassword {
+    if (!dotenv.isInitialized) return '';
+    return dotenv.env['EINTHUSAN_PASSWORD']?.trim() ?? '';
+  }
 
   @override
   void initState() {
@@ -256,6 +264,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
         var accountPass = '$_accountPassword';
 
         function checkAndPerformLogin() {
+          if (!accountEmail || !accountPass) return;
           var userPopup = document.getElementById('login-popup');
           var isLoggedOut = !userPopup || !userPopup.getAttribute('data-user') || userPopup.getAttribute('data-user') === '';
           var emailInput = document.getElementById('login-email');
@@ -326,6 +335,18 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
 
   /// Manually trigger background auto-login
   void _triggerAutoLogin({bool showToast = false}) {
+    if (_accountEmail.isEmpty || _accountPassword.isEmpty) {
+      if (showToast && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No credentials found in .env file'),
+            backgroundColor: Color(0xFFEF4444),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
     _controller.runJavaScript('''
       (function() {
         var emailInput = document.getElementById('login-email');
@@ -349,10 +370,10 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
     ''');
     if (showToast && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Auto-logging in as $_accountEmail...'),
-          backgroundColor: Color(0xFF10B981),
-          duration: Duration(seconds: 2),
+          backgroundColor: const Color(0xFF10B981),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -872,7 +893,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
           const SizedBox(width: 8),
           _buildToolbarButton(
             icon: Icons.verified_user_rounded,
-            label: 'Auto-Login (vishnu32510)',
+            label: _accountEmail.isNotEmpty ? 'Auto-Login (${_accountEmail.split("@").first})' : 'Login',
             color: const Color(0xFF10B981),
             onTap: () => _triggerAutoLogin(showToast: true),
           ),

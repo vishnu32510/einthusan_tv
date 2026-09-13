@@ -24,7 +24,9 @@ jobs:
           cache: true
 
       - name: Create .env file
-        run: touch .env
+        run: |
+          echo "EINTHUSAN_EMAIL=${{ secrets.EINTHUSAN_EMAIL }}" >> .env
+          echo "EINTHUSAN_PASSWORD=${{ secrets.EINTHUSAN_PASSWORD }}" >> .env
 
       - name: Install dependencies
         run: flutter pub get

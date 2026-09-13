@@ -2,10 +2,17 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/tv_browser_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (e) {
+    debugPrint('Warning: .env failed to load or not found: $e');
+  }
 
   // Mobile/TV display optimizations (skip on desktop platforms like macOS/Windows/Linux)
   if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
