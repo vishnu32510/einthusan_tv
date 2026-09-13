@@ -117,23 +117,80 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
     _controller = controller;
   }
 
-  /// Inject CSS & JS optimizations for TV display (smoother scrolling, enlarged touch targets)
+  /// Inject CSS & JS optimizations for TV display (ad-blocking, 10-ft TV layout, auto-fullscreen video)
   void _injectTvOptimizations() {
     _controller.runJavaScript('''
       (function() {
-        // Intercept window.open so third-party OAuth popups (Google, Facebook) stay in the webview
+        // 1. Intercept window.open so popup auth/links stay inside the TV webview
         window.open = function(url) {
           if (url) { window.location.href = url; }
           return null;
         };
 
-        // Ensure target=_blank links open in this webview
+        // 2. Ensure target=_blank links open in this webview
         document.querySelectorAll('a[target="_blank"]').forEach(function(a) {
           a.setAttribute('target', '_self');
         });
 
-        // Smooth scroll styling
-        document.documentElement.style.scrollBehavior = 'smooth';
+        // 3. Inject TV-Optimized Stylesheet: strip ads, enlarge posters, add TV hover glow
+        var style = document.getElementById('tv-optimized-style');
+        if (!style) {
+          style = document.createElement('style');
+          style.id = 'tv-optimized-style';
+          style.innerHTML = [
+            '/* Hide all ad containers and junk clutter */',
+            '.adspace-lb, [id*="venatus"], [class*="adspace"], [data-id*="goadx"],',
+            '.qc-cmp2-container, #cmp-modal, iframe[src*="ad"] {',
+            '  display: none !important;',
+            '  height: 0 !important;',
+            '  max-height: 0 !important;',
+            '  opacity: 0 !important;',
+            '  pointer-events: none !important;',
+            '}',
+            '/* TV Smooth Scrolling */',
+            'html, body {',
+            '  scroll-behavior: smooth !important;',
+            '  background-color: #0d1117 !important;',
+            '}',
+            '/* Enlarge Movie Cards & Posters for 10-foot TV viewing */',
+            'ul li a img {',
+            '  border-radius: 10px !important;',
+            '  transition: transform 0.22s ease, box-shadow 0.22s ease !important;',
+            '}',
+            'ul li:hover img, ul li:focus-within img {',
+            '  transform: scale(1.08) !important;',
+            '  box-shadow: 0 8px 24px rgba(229, 9, 20, 0.75), 0 0 12px rgba(255, 255, 255, 0.4) !important;',
+            '}',
+            '/* TV Navigation bar clarity */',
+            '#UIHeadBar {',
+            '  position: sticky !important;',
+            '  top: 0 !important;',
+            '  z-index: 99999 !important;',
+            '  box-shadow: 0 4px 16px rgba(0,0,0,0.8) !important;',
+            '}',
+            '/* Movie Video Player Fullscreen Enhancement */',
+            '#UIVideoPlayer, .video-js, video {',
+            '  max-width: 100vw !important;',
+            '  width: 100% !important;',
+            '  border-radius: 8px !important;',
+            '}'
+          ].join('\n');
+          document.head.appendChild(style);
+        }
+
+        // 4. If on a movie watch page, auto-scroll directly into the video player
+        var videoEl = document.querySelector('video') || document.getElementById('UIVideoPlayer');
+        if (videoEl) {
+          setTimeout(function() {
+            videoEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 600);
+        }
+
+        // 5. Auto dismiss cookie consent / GDPR banners if present
+        var cmpButtons = document.querySelectorAll('button[class*="agree"], button[id*="agree"], .qc-cmp2-summary-buttons button');
+        if (cmpButtons.length > 0) {
+          cmpButtons[0].click();
+        }
       })();
     ''');
     _applyZoom();
