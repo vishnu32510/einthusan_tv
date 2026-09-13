@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -71,19 +72,22 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
     final WebViewController controller =
         WebViewController.fromPlatformCreationParams(params);
 
-    controller
-      .setJavaScriptMode(JavaScriptMode.unrestricted);
-    controller.setUserAgent(tvDesktopUserAgent);
+    if (!kIsWeb) {
+      try {
+        controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+      } catch (_) {}
 
-    // Safely set background color (catch UnimplementedError on macOS/desktop)
-    try {
-      controller.setBackgroundColor(const Color(0xFF0D1117));
-    } catch (_) {
-      // Ignored if platform does not support setOpaque / setBackgroundColor
-    }
+      try {
+        controller.setUserAgent(tvDesktopUserAgent);
+      } catch (_) {}
 
-    controller.setNavigationDelegate(
-        NavigationDelegate(
+      try {
+        controller.setBackgroundColor(const Color(0xFF0D1117));
+      } catch (_) {}
+
+      try {
+        controller.setNavigationDelegate(
+          NavigationDelegate(
           onProgress: (int progress) {
             setState(() {
               _loadingProgress = progress / 100.0;
@@ -146,6 +150,11 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
           },
         ),
       );
+      } catch (_) {}
+    } else {
+      // Web platforms finish loading once iframe URL is assigned
+      _isLoading = false;
+    }
     controller.loadRequest(Uri.parse(initialUrl));
 
     // Enable hardware acceleration & media playback for Android
@@ -160,9 +169,60 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
     _controller = controller;
   }
 
+
+  Future<void> _safeRunJavaScript(String script) async {
+    if (kIsWeb) return;
+    try {
+      await _controller.runJavaScript(script);
+    } catch (_) {}
+  }
+
+  Future<bool> _safeCanGoBack() async {
+    if (kIsWeb) return false;
+    try {
+      return await _controller.canGoBack();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _safeCanGoForward() async {
+    if (kIsWeb) return false;
+    try {
+      return await _controller.canGoForward();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _safeGoBack() {
+    if (kIsWeb) return;
+    try {
+      _controller.goBack();
+    } catch (_) {}
+  }
+
+  void _safeGoForward() {
+    if (kIsWeb) return;
+    try {
+      _controller.goForward();
+    } catch (_) {}
+  }
+
+  void _safeReload() {
+    if (kIsWeb) {
+      _controller.loadRequest(Uri.parse(initialUrl));
+      return;
+    }
+    try {
+      _controller.reload();
+    } catch (_) {}
+  }
+
   /// Inject CSS & JS optimizations for TV display (ad-blocking, 10-ft TV layout, auto-fullscreen video)
   void _injectTvOptimizations() {
-    _controller.runJavaScript('''
+    if (kIsWeb) return;
+    _safeRunJavaScript('''
       (function() {
         // 1. Intercept window.open: allow legitimate auth/einthusan links, KILL ad popups
         window.open = function(url) {
@@ -347,7 +407,8 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
       }
       return;
     }
-    _controller.runJavaScript('''
+    if (kIsWeb) return;
+    _safeRunJavaScript('''
       (function() {
         var emailInput = document.getElementById('login-email');
         var passInput = document.getElementById('login-password');
@@ -380,7 +441,8 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
   }
 
   void _applyZoom() {
-    _controller.runJavaScript('''
+    if (kIsWeb) return;
+    _safeRunJavaScript('''
       document.body.style.zoom = '$_zoomLevel';
     ''');
   }
@@ -433,7 +495,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
   }
 
   void _scrollPage(int yDelta) {
-    _controller.runJavaScript('window.scrollBy({top: $yDelta, behavior: "smooth"});');
+    _safeRunJavaScript('window.scrollBy({top: $yDelta, behavior: "smooth"});');
   }
 
   /// Simulate a click at the virtual cursor's current on-screen location
@@ -469,7 +531,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
       })();
     ''';
 
-    await _controller.runJavaScript(clickScript);
+    await _safeRunJavaScript(clickScript);
 
     await Future.delayed(const Duration(milliseconds: 160));
     if (mounted) {
@@ -526,13 +588,13 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
           _scrollPage(-300);
           return KeyEventResult.handled;
         } else if (key == LogicalKeyboardKey.arrowLeft) {
-          _controller.canGoBack().then((can) {
-            if (can) _controller.goBack();
+          _safeCanGoBack().then((can) {
+            if (can) _safeGoBack();
           });
           return KeyEventResult.handled;
         } else if (key == LogicalKeyboardKey.arrowRight) {
-          _controller.canGoForward().then((can) {
-            if (can) _controller.goForward();
+          _safeCanGoForward().then((can) {
+            if (can) _safeGoForward();
           });
           return KeyEventResult.handled;
         }
@@ -863,8 +925,8 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
             icon: Icons.arrow_back_rounded,
             label: 'Back',
             onTap: () async {
-              if (await _controller.canGoBack()) {
-                _controller.goBack();
+              if (await _safeCanGoBack()) {
+                _safeGoBack();
               }
             },
           ),
@@ -873,8 +935,8 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
             icon: Icons.arrow_forward_rounded,
             label: 'Forward',
             onTap: () async {
-              if (await _controller.canGoForward()) {
-                _controller.goForward();
+              if (await _safeCanGoForward()) {
+                _safeGoForward();
               }
             },
           ),
@@ -882,7 +944,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
           _buildToolbarButton(
             icon: Icons.refresh_rounded,
             label: 'Reload',
-            onTap: () => _controller.reload(),
+            onTap: () => _safeReload(),
           ),
           const SizedBox(width: 8),
           _buildToolbarButton(
