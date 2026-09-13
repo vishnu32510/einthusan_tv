@@ -12,5 +12,6 @@
     "network"
   ],
   "trustExternal": true,
-  "handlesRelaunch": true
+  "handlesRelaunch": true,
+  "handlesVirtualKeyboard": true
 }
