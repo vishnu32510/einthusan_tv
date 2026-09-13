@@ -1,7 +1,7 @@
 {
-  "id": "com.nungu.einthusantv",
+  "id": "com.nungu.tv",
   "version": "1.0.0",
-  "vendor": "Nungu TV",
+  "vendor": "Nungu Labs",
   "type": "web",
   "main": "index.html",
   "title": "Nungu TV",
