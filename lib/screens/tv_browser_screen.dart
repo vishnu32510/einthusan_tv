@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,7 +19,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
   static const String initialUrl =
       'https://einthusan.tv/movie/browse/?lang=tamil';
 
-  late final WebViewController _controller;
+  WebViewController? _controller;
   final FocusNode _focusNode = FocusNode();
 
   // Page Loading State
@@ -57,11 +58,14 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
   @override
   void initState() {
     super.initState();
-    _initializeWebView();
-    _startMovementLoop();
+    if (!kIsWeb) {
+      _initializeWebView();
+      _startMovementLoop();
+    }
   }
 
   void _initializeWebView() {
+    if (kIsWeb) return;
     late final PlatformWebViewControllerCreationParams params;
     if (WebViewPlatform.instance is AndroidWebViewPlatform) {
       params = AndroidWebViewControllerCreationParams();
@@ -173,14 +177,15 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
   Future<void> _safeRunJavaScript(String script) async {
     if (kIsWeb) return;
     try {
-      await _controller.runJavaScript(script);
+      if (_controller != null) await _controller!.runJavaScript(script);
     } catch (_) {}
   }
 
   Future<bool> _safeCanGoBack() async {
     if (kIsWeb) return false;
     try {
-      return await _controller.canGoBack();
+      if (_controller == null) return false;
+    return await _controller!.canGoBack();
     } catch (_) {
       return false;
     }
@@ -189,7 +194,8 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
   Future<bool> _safeCanGoForward() async {
     if (kIsWeb) return false;
     try {
-      return await _controller.canGoForward();
+      if (_controller == null) return false;
+    return await _controller!.canGoForward();
     } catch (_) {
       return false;
     }
@@ -198,24 +204,24 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
   void _safeGoBack() {
     if (kIsWeb) return;
     try {
-      _controller.goBack();
+      _controller?.goBack();
     } catch (_) {}
   }
 
   void _safeGoForward() {
     if (kIsWeb) return;
     try {
-      _controller.goForward();
+      _controller?.goForward();
     } catch (_) {}
   }
 
   void _safeReload() {
     if (kIsWeb) {
-      _controller.loadRequest(Uri.parse(initialUrl));
+      _controller?.loadRequest(Uri.parse(initialUrl));
       return;
     }
     try {
-      _controller.reload();
+      _controller?.reload();
     } catch (_) {}
   }
 
@@ -610,7 +616,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
       if (key == LogicalKeyboardKey.mediaPlayPause ||
           key == LogicalKeyboardKey.mediaPlay ||
           key == LogicalKeyboardKey.mediaPause) {
-        _controller.runJavaScript('''
+        _controller?.runJavaScript('''
           (function() {
             var v = document.querySelector('video');
             if (v) {
@@ -637,9 +643,9 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
       return false;
     }
 
-    final canGoBack = await _controller.canGoBack();
+    final canGoBack = _controller != null && await _controller!.canGoBack();
     if (canGoBack) {
-      await _controller.goBack();
+      await _controller?.goBack();
       return false;
     }
 
@@ -671,6 +677,9 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return _buildWebHub(context);
+    }
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -690,7 +699,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
             children: [
               // Main WebView
               Positioned.fill(
-                child: WebViewWidget(controller: _controller),
+                child: _controller != null ? WebViewWidget(controller: _controller!) : const SizedBox.shrink(),
               ),
 
               // Loading Progress Bar
@@ -757,7 +766,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                                 _errorMessage = null;
                                 _isLoading = true;
                               });
-                              _controller.reload();
+                              _controller?.reload();
                             },
                           ),
                         ],
@@ -950,7 +959,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
           _buildToolbarButton(
             icon: Icons.home_rounded,
             label: 'Tamil Home',
-            onTap: () => _controller.loadRequest(Uri.parse(initialUrl)),
+            onTap: () => _controller?.loadRequest(Uri.parse(initialUrl)),
           ),
           const SizedBox(width: 8),
           _buildToolbarButton(
@@ -1071,4 +1080,547 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
       ),
     );
   }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+        webOnlyWindowName: '_blank',
+      );
+    } catch (e) {
+      debugPrint('Error launching url: $e');
+    }
+  }
+
+  Widget _buildWebHub(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isMobile = screenSize.width < 768;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF080D1A),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(0, -0.3),
+            radius: 1.2,
+            colors: [
+              Color(0xFF131D33),
+              Color(0xFF090D18),
+              Color(0xFF04060B),
+            ],
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 20 : 48,
+            vertical: 24,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 960),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Top Navbar
+                  _buildWebNav(context, isMobile),
+                  const SizedBox(height: 48),
+
+                  // Hero Emblem & Brand
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE50914).withValues(alpha: 0.35),
+                          blurRadius: 36,
+                          spreadRadius: 4,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.asset(
+                      'assets/icon/app_icon.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Hero Titles
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [Colors.white, Color(0xFFE2E8F0)],
+                    ).createShader(bounds),
+                    child: const Text(
+                      'Einthusan Cinema',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 42,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Direct HD Streaming for Tamil, Telugu, Hindi, Malayalam & Kannada Movies',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Color(0xFF94A3B8),
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 36),
+
+                  // Primary Launch CTA Button
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () => _openUrl(initialUrl),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 20,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFE50914), Color(0xFFB81D24)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFE50914).withValues(alpha: 0.45),
+                              blurRadius: 24,
+                              spreadRadius: 2,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.play_circle_fill_rounded,
+                              size: 28,
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Launch Einthusan Web Player',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(
+                              Icons.open_in_new_rounded,
+                              size: 20,
+                              color: Colors.white70,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Language Quick-Jump Bar
+                  _buildLanguagePicker(isMobile),
+                  const SizedBox(height: 48),
+
+                  // Frame-Options Technical Notice Card
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF131D30).withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFF2E3E5C).withValues(alpha: 0.6),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.info_outline_rounded,
+                            color: Color(0xFF38BDF8),
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 18),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Why does the web player launch in a secure window?',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 6),
+                              Text(
+                                'Einthusan’s media servers enforce strict "X-Frame-Options: DENY" HTTP headers to prevent unauthorized embedded iframes in web browsers. Launching directly in a top-level window bypasses iframe connection errors and delivers uninterrupted full-resolution hardware video acceleration.',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF94A3B8),
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Smart TV App Promotion Card
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF1E293B).withValues(alpha: 0.7),
+                          const Color(0xFF0F172A).withValues(alpha: 0.9),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF334155).withValues(alpha: 0.7),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.tv_rounded,
+                                color: Color(0xFF10B981),
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Text(
+                                'Watch on Android TV & Firestick',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Enjoy true 10-foot television remote control navigation with a built-in virtual mouse cursor, ad & popunder filtering, and continuous playback on Google TV, Sony Bravia, Xiaomi, and Amazon Fire TV.',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Color(0xFF94A3B8),
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Wrap(
+                          spacing: 16,
+                          runSpacing: 12,
+                          children: [
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF10B981),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22,
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.download_rounded),
+                              label: const Text(
+                                'Download Android TV APK',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              onPressed: () => _openUrl(
+                                'https://github.com/vishnu32510/einthusan_tv/releases',
+                              ),
+                            ),
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFE2E8F0),
+                                side: const BorderSide(color: Color(0xFF475569)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.code_rounded),
+                              label: const Text('GitHub Source'),
+                              onPressed: () => _openUrl(
+                                'https://github.com/vishnu32510/einthusan_tv',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 56),
+
+                  // Legal Footer
+                  _buildWebFooter(context),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebNav(BuildContext context, bool isMobile) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFE50914).withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Image.asset(
+                'assets/icon/app_icon.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'NUNGU TV',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                ),
+              ),
+              child: const Text(
+                'WEB HUB',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF10B981),
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (!isMobile)
+          Row(
+            children: [
+              TextButton(
+                onPressed: () => _openUrl('terms.html'),
+                child: const Text(
+                  'Terms & DMCA',
+                  style: TextStyle(color: Color(0xFF94A3B8)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: () => _openUrl('privacy.html'),
+                child: const Text(
+                  'Privacy Policy',
+                  style: TextStyle(color: Color(0xFF94A3B8)),
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildLanguagePicker(bool isMobile) {
+    final languages = [
+      {'name': 'Tamil', 'code': 'tamil'},
+      {'name': 'Telugu', 'code': 'telugu'},
+      {'name': 'Hindi', 'code': 'hindi'},
+      {'name': 'Malayalam', 'code': 'malayalam'},
+      {'name': 'Kannada', 'code': 'kannada'},
+      {'name': 'Bengali', 'code': 'bengali'},
+    ];
+
+    return Column(
+      children: [
+        const Text(
+          'Quick Browse by Language',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF64748B),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          alignment: WrapAlignment.center,
+          children: languages.map((lang) {
+            return InkWell(
+              onTap: () => _openUrl('https://einthusan.tv/movie/browse/?lang=${lang["code"]}'),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF161F30),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color(0xFF2A3A54),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      lang['name']!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWebFooter(BuildContext context) {
+    return Column(
+      children: [
+        Wrap(
+          spacing: 24,
+          runSpacing: 12,
+          alignment: WrapAlignment.center,
+          children: [
+            InkWell(
+              onTap: () => _openUrl('terms.html'),
+              child: const Text(
+                'Terms of Service',
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+              ),
+            ),
+            InkWell(
+              onTap: () => _openUrl('terms.html#dmca'),
+              child: const Text(
+                'DMCA & Copyright Takedown',
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+              ),
+            ),
+            InkWell(
+              onTap: () => _openUrl('privacy.html'),
+              child: const Text(
+                'Privacy Policy',
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+              ),
+            ),
+            InkWell(
+              onTap: () => _openUrl('https://github.com/vishnu32510/einthusan_tv'),
+              child: const Text(
+                'GitHub',
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Nungu TV is an independent client and media portal. We do not host, store, or broadcast any video streams on our servers. All video media is streamed directly from public third-party web servers.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Color(0xFF475569),
+            fontSize: 12,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          '© 2026 Nungu TV. All trademarks belong to their respective owners.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Color(0xFF334155),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
 }
