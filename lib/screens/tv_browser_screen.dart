@@ -41,6 +41,10 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
   static const String tvDesktopUserAgent =
       'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 
+  // Account Credentials for Background Auto-Login & 10-minute Lock Bypass
+  static const String _accountEmail = 'vishnu32510@gmail.com';
+  static const String _accountPassword = r'WHeSHRA!u8mL3Xc';
+
   @override
   void initState() {
     super.initState();
@@ -176,6 +180,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
           style.innerHTML = [
             '/* Hide all ad containers and junk clutter */',
             '.adspace-lb, [id*="venatus"], [class*="adspace"], [data-id*="goadx"],',
+            '#discount-offer-popup, #premium-notif-popup,',
             '.qc-cmp2-container, #cmp-modal, iframe[src*="ad"] {',
             '  display: none !important;',
             '  height: 0 !important;',
@@ -245,9 +250,112 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
         if (cmpButtons.length > 0) {
           cmpButtons[0].click();
         }
+
+        // 7. Background Auto-Login & 10-Minute Playback Watchdog
+        var accountEmail = '$_accountEmail';
+        var accountPass = '$_accountPassword';
+
+        function checkAndPerformLogin() {
+          var userPopup = document.getElementById('login-popup');
+          var isLoggedOut = !userPopup || !userPopup.getAttribute('data-user') || userPopup.getAttribute('data-user') === '';
+          var emailInput = document.getElementById('login-email');
+          var passInput = document.getElementById('login-password');
+          var submitBtn = document.getElementById('login-submit');
+
+          if (isLoggedOut && emailInput && passInput && submitBtn) {
+            emailInput.value = accountEmail;
+            passInput.value = accountPass;
+            emailInput.dispatchEvent(new Event('change', { bubbles: true }));
+            passInput.dispatchEvent(new Event('input', { bubbles: true }));
+            submitBtn.click();
+            setTimeout(function() {
+              if (window.\$ && window.\$.magnificPopup) {
+                window.\$.magnificPopup.close();
+              }
+            }, 600);
+          }
+        }
+
+        // Proactive login on initial page load if not authenticated
+        checkAndPerformLogin();
+
+        // Continuous Watchdog (every 1.5s):
+        // Automatically clears 10-min login interruptions, dismisses promo modals & resumes playback
+        setInterval(function() {
+          // A. If login popup is triggered (e.g. at 10 minute mark)
+          var loginPopup = document.getElementById('login-popup');
+          if (loginPopup) {
+            var isVisible = loginPopup.classList.contains('mfp-ready') ||
+                            loginPopup.style.display === 'block' ||
+                            !loginPopup.classList.contains('mfp-hide');
+            if (isVisible) {
+              checkAndPerformLogin();
+              if (window.\$ && window.\$.magnificPopup) {
+                window.\$.magnificPopup.close();
+              }
+            }
+          }
+
+          // B. Auto-dismiss discount / premium confirmation buttons
+          var offerClose = document.getElementById('pn-offer-close');
+          if (offerClose && offerClose.offsetParent !== null) offerClose.click();
+
+          var premUnderstand = document.getElementById('pn-understand');
+          if (premUnderstand && premUnderstand.offsetParent !== null) premUnderstand.click();
+
+          var premClose = document.getElementById('pn-close');
+          if (premClose && premClose.offsetParent !== null) premClose.click();
+
+          // C. Auto-resume video if paused by an overlay / popup
+          var video = document.querySelector('video') || document.getElementById('UIVideoPlayer');
+          if (video && video.paused && !video.ended && video.currentTime > 5) {
+            var blocking = document.querySelector('.mfp-wrap, .mfp-bg');
+            if (blocking) {
+              if (window.\$ && window.\$.magnificPopup) {
+                window.\$.magnificPopup.close();
+              }
+              blocking.remove();
+              video.play().catch(function(e) {});
+            }
+          }
+        }, 1500);
       })();
     ''');
     _applyZoom();
+  }
+
+  /// Manually trigger background auto-login
+  void _triggerAutoLogin({bool showToast = false}) {
+    _controller.runJavaScript('''
+      (function() {
+        var emailInput = document.getElementById('login-email');
+        var passInput = document.getElementById('login-password');
+        var submitBtn = document.getElementById('login-submit');
+        if (emailInput && passInput && submitBtn) {
+          emailInput.value = '$_accountEmail';
+          passInput.value = '$_accountPassword';
+          emailInput.dispatchEvent(new Event('change', { bubbles: true }));
+          passInput.dispatchEvent(new Event('input', { bubbles: true }));
+          submitBtn.click();
+          setTimeout(function() {
+            if (window.\$ && window.\$.magnificPopup) {
+              window.\$.magnificPopup.close();
+            }
+          }, 600);
+        } else {
+          window.location.href = 'https://einthusan.tv/login/?lang=tamil';
+        }
+      })();
+    ''');
+    if (showToast && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Auto-logging in as $_accountEmail...'),
+          backgroundColor: Color(0xFF10B981),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _applyZoom() {
@@ -763,21 +871,10 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
           ),
           const SizedBox(width: 8),
           _buildToolbarButton(
-            icon: Icons.account_circle_rounded,
-            label: 'Login',
-            onTap: () {
-              _controller.runJavaScript("""
-                (function() {
-                  var popup = document.getElementById('login-popup');
-                  if (popup) {
-                    popup.classList.remove('mfp-hide');
-                    popup.style.display = 'block';
-                  } else {
-                    window.location.href = 'https://einthusan.tv/login/?lang=tamil';
-                  }
-                })();
-              """);
-            },
+            icon: Icons.verified_user_rounded,
+            label: 'Auto-Login (vishnu32510)',
+            color: const Color(0xFF10B981),
+            onTap: () => _triggerAutoLogin(showToast: true),
           ),
 
           const SizedBox(width: 32),
