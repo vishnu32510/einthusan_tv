@@ -1,6 +1,6 @@
 <br/>
 <p align="center">
-  <a href="https://github.com/vishnu32510/einthusan_tv">
+  <a href="https://github.com/vishnu32510/nungu_tv">
     <img src="assets/icon/app_icon.png" alt="Nungu TV Logo" width="100" height="100" style="border-radius: 22px; box-shadow: 0 10px 30px rgba(229, 9, 20, 0.4);">
   </a>
   <h1 align="center">Nungu TV</h1>
@@ -12,9 +12,9 @@
 </p>
 
 <p align="center">
-  <a href="https://einthusan-tv.web.app"><img src="https://img.shields.io/badge/Live_Web_Hub-einthusan--tv.web.app-E50914?style=for-the-badge&logo=firebase&logoColor=white" alt="Live Web App"></a>
-  <a href="https://github.com/vishnu32510/einthusan_tv/releases/latest"><img src="https://img.shields.io/badge/Latest_Release-v1.0.0-10B981?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Release"></a>
-  <a href="https://github.com/vishnu32510/einthusan_tv/actions"><img src="https://img.shields.io/badge/CI%2FCD-Passing-3B82F6?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI Status"></a>
+  <a href="https://nungu-tv.web.app"><img src="https://img.shields.io/badge/Live_Web_Hub-nungu--tv.web.app-E50914?style=for-the-badge&logo=firebase&logoColor=white" alt="Live Web App"></a>
+  <a href="https://github.com/vishnu32510/nungu_tv/releases/latest"><img src="https://img.shields.io/badge/Latest_Release-v1.0.0-10B981?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Release"></a>
+  <a href="https://github.com/vishnu32510/nungu_tv/actions"><img src="https://img.shields.io/badge/CI%2FCD-Passing-3B82F6?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI Status"></a>
   <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter"></a>
   <a href="#license"><img src="https://img.shields.io/badge/License-MIT-6B7280?style=for-the-badge" alt="License"></a>
 </p>
@@ -25,9 +25,9 @@
 
 | Platform | Package Format | Download Link | Instructions |
 | :--- | :--- | :--- | :--- |
-| **Android TV / TCL / Google TV / Fire TV** | `.apk` (Release) | [⬇ Download Android TV APK](https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk) | [View Android TV Guide](#-android-tv--google-tv--firestick-installation) |
-| **LG webOS Smart TV** | `.ipk` (Package) | [⬇ Download LG webOS IPK](https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-webOS-v1.0.0.ipk) | [View LG webOS Guide](#-lg-webos-smart-tv-installation) |
-| **Web & PWA** | Web App | [🌐 Open Nungu TV Web Hub](https://einthusan-tv.web.app) | Top-level player launch (bypasses iframe restrictions) |
+| **Android TV / TCL / Google TV / Fire TV** | `.apk` (Release) | [⬇ Download Android TV APK](https://github.com/vishnu32510/nungu_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk) | [View Android TV Guide](#-android-tv--google-tv--firestick-installation) |
+| **LG webOS Smart TV** | `.ipk` (Package) | [⬇ Download LG webOS IPK](https://github.com/vishnu32510/nungu_tv/releases/latest/download/NunguTV-webOS-v1.0.0.ipk) | [View LG webOS Guide](#-lg-webos-smart-tv-installation) |
+| **Web & PWA** | Web App | [🌐 Open Nungu TV Web Hub](https://nungu-tv.web.app) | Top-level player launch (bypasses iframe restrictions) |
 
 ---
 
@@ -57,12 +57,12 @@
 2. Allow Downloader to *Install Unknown Apps* in **Settings $\rightarrow$ Apps $\rightarrow$ Security & Restrictions**.
 3. In the Downloader app URL bar, type:
    ```
-   https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk
+   https://github.com/vishnu32510/nungu_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk
    ```
 4. Click **Install**.
 
 #### Method 2: Via USB Drive
-1. Download [`NunguTV-AndroidTV-v1.0.0.apk`](https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk) to a USB flash drive.
+1. Download [`NunguTV-AndroidTV-v1.0.0.apk`](https://github.com/vishnu32510/nungu_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk) to a USB flash drive.
 2. Plug the USB drive into your TV and open any file manager (e.g. *File Commander*).
 3. Click the `.apk` file to install.
 
@@ -89,7 +89,7 @@ adb install -r dist/NunguTV-AndroidTV-v1.0.0.apk
 #### Method 2: Device Manager for webOS (Desktop GUI)
 1. Download **[Device Manager for webOS (Desktop)](https://github.com/webosbrew/dev-manager-desktop/releases)**.
 2. Connect to your TV using the IP address and Dev Mode passphrase.
-3. Drag and drop [`dist/NunguTV-webOS-v1.0.0.ipk`](https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-webOS-v1.0.0.ipk) into the application list.
+3. Drag and drop [`dist/NunguTV-webOS-v1.0.0.ipk`](https://github.com/vishnu32510/nungu_tv/releases/latest/download/NunguTV-webOS-v1.0.0.ipk) into the application list.
 
 ---
 
@@ -109,8 +109,8 @@ adb install -r dist/NunguTV-AndroidTV-v1.0.0.apk
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/vishnu32510/einthusan_tv.git
-cd einthusan_tv
+git clone https://github.com/vishnu32510/nungu_tv.git
+cd nungu_tv
 ```
 
 ### 2. Install Dependencies
@@ -161,9 +161,9 @@ The repository includes GitHub Actions workflows in `.github/workflows/`:
 
 Nungu TV is an independent third-party client and media browser. The software does not host, broadcast, archive, or store any copyrighted video streams on its own servers. All content is indexed and streamed directly from publicly accessible web servers.
 
-- [Terms & Conditions](https://einthusan-tv.web.app/terms.html)
-- [DMCA & Copyright Takedown Policy](https://einthusan-tv.web.app/terms.html#dmca)
-- [Privacy Policy](https://einthusan-tv.web.app/privacy.html)
+- [Terms & Conditions](https://nungu-tv.web.app/terms.html)
+- [DMCA & Copyright Takedown Policy](https://nungu-tv.web.app/terms.html#dmca)
+- [Privacy Policy](https://nungu-tv.web.app/privacy.html)
 
 ---
 

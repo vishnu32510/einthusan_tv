@@ -51,4 +51,4 @@ To the maximum extent permitted by applicable law, the developers, contributors,
 For any legal inquiries, copyright notices, takedown requests, or questions regarding these Terms:
 - **Designated Contact:** Vishnu Priyan
 - **Email:** [vishnu32510@gmail.com](mailto:vishnu32510@gmail.com)
-- **Project Repository:** [https://github.com/vishnu32510/einthusan_tv](https://github.com/vishnu32510/einthusan_tv)
+- **Project Repository:** [https://github.com/vishnu32510/nungu_tv](https://github.com/vishnu32510/nungu_tv)

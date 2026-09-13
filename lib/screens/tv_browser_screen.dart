@@ -1406,7 +1406,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               onPressed: () => _openUrl(
-                                'https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk',
+                                'https://github.com/vishnu32510/nungu_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk',
                               ),
                             ),
                             ElevatedButton.icon(
@@ -1427,7 +1427,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               onPressed: () => _openUrl(
-                                'https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-webOS-v1.0.0.ipk',
+                                'https://github.com/vishnu32510/nungu_tv/releases/latest/download/NunguTV-webOS-v1.0.0.ipk',
                               ),
                             ),
                             OutlinedButton.icon(
@@ -1445,7 +1445,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                               icon: const Icon(Icons.code_rounded),
                               label: const Text('All GitHub Releases'),
                               onPressed: () => _openUrl(
-                                'https://github.com/vishnu32510/einthusan_tv/releases',
+                                'https://github.com/vishnu32510/nungu_tv/releases',
                               ),
                             ),
                           ],
@@ -1538,10 +1538,10 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                                     Expanded(
                                       child: InkWell(
                                         onTap: () => _openUrl(
-                                          'https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk',
+                                          'https://github.com/vishnu32510/nungu_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk',
                                         ),
                                         child: const Text(
-                                          'https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk',
+                                          'https://github.com/vishnu32510/nungu_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk',
                                           style: TextStyle(
                                             color: Color(0xFF60A5FA),
                                             fontSize: 13,
@@ -1563,7 +1563,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                                       tooltip: 'Copy Link',
                                       onPressed: () {
                                         Clipboard.setData(const ClipboardData(
-                                          text: 'https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk',
+                                          text: 'https://github.com/vishnu32510/nungu_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk',
                                         ));
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           const SnackBar(
@@ -1684,13 +1684,13 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
               TextButton.icon(
                 icon: const Icon(Icons.android_rounded, size: 16, color: Color(0xFF10B981)),
                 label: const Text('Android APK', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
-                onPressed: () => _openUrl('https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk'),
+                onPressed: () => _openUrl('https://github.com/vishnu32510/nungu_tv/releases/latest/download/NunguTV-AndroidTV-v1.0.0.apk'),
               ),
               const SizedBox(width: 6),
               TextButton.icon(
                 icon: const Icon(Icons.tv_rounded, size: 16, color: Color(0xFF38BDF8)),
                 label: const Text('LG webOS IPK', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
-                onPressed: () => _openUrl('https://github.com/vishnu32510/einthusan_tv/releases/latest/download/NunguTV-webOS-v1.0.0.ipk'),
+                onPressed: () => _openUrl('https://github.com/vishnu32510/nungu_tv/releases/latest/download/NunguTV-webOS-v1.0.0.ipk'),
               ),
               const SizedBox(width: 8),
               TextButton(
@@ -1810,7 +1810,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
               ),
             ),
             InkWell(
-              onTap: () => _openUrl('https://github.com/vishnu32510/einthusan_tv'),
+              onTap: () => _openUrl('https://github.com/vishnu32510/nungu_tv'),
               child: const Text(
                 'GitHub',
                 style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
