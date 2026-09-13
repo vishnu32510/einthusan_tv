@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <strong>Native Smart TV & Web Client for South Asian Cinema (Einthusan)</strong><br>
+  <strong>Native Smart TV & Web Media Client for South Asian Cinema</strong><br>
   Optimized for 10-foot television remote controls, virtual mouse pointer, ad-free streaming, and 4K playback.
 </p>
 

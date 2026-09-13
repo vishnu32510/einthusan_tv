@@ -114,7 +114,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
               setState(() {
                 _isLoading = false;
                 _errorMessage =
-                    'Unable to load Einthusan (${error.description}).\nPlease check your internet connection.';
+                    'Unable to load media content (${error.description}).\nPlease check your internet connection.';
               });
             }
           },
@@ -948,7 +948,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
               ),
               const SizedBox(width: 10),
               const Text(
-                'EINTHUSAN TV',
+                'NUNGU TV',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -1189,7 +1189,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                       colors: [Colors.white, Color(0xFFE2E8F0)],
                     ).createShader(bounds),
                     child: const Text(
-                      'Einthusan Cinema',
+                      'Nungu Cinema',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 42,
@@ -1247,7 +1247,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                             ),
                             SizedBox(width: 12),
                             Text(
-                              'Launch Einthusan Web Player',
+                              'Launch Web Player',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -1312,7 +1312,7 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
                               ),
                               SizedBox(height: 6),
                               Text(
-                                'Einthusan’s media servers enforce strict "X-Frame-Options: DENY" HTTP headers to prevent unauthorized embedded iframes in web browsers. Launching directly in a top-level window bypasses iframe connection errors and delivers uninterrupted full-resolution hardware video acceleration.',
+                                'Public streaming servers enforce strict "X-Frame-Options: DENY" HTTP headers to prevent unauthorized embedded iframes in web browsers. Launching directly in a top-level window bypasses iframe connection errors and delivers uninterrupted full-resolution hardware video acceleration.',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Color(0xFF94A3B8),
