@@ -8,7 +8,7 @@
 PRODUCT_NAME = einthusan_tv
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.einthusan.tv.einthusanTv
+PRODUCT_BUNDLE_IDENTIFIER = com.nungu.einthusantv
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.einthusan.tv. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 com.nungu. All rights reserved.

@@ -1,4 +1,4 @@
-package com.einthusan.tv.einthusan_tv
+package com.nungu.einthusantv
 
 import io.flutter.embedding.android.FlutterActivity
 
