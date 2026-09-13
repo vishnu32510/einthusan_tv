@@ -1,12 +1,12 @@
 {
-    "name": "einthusan_tv",
-    "short_name": "einthusan_tv",
+    "name": "Nungu TV",
+    "short_name": "Nungu TV",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0D1117",
     "theme_color": "#E50914",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "description": "Nungu TV - Seamless TV browser and media client.",
+    "orientation": "landscape",
     "prefer_related_applications": false,
     "icons": [
         {
