@@ -9,25 +9,8 @@
       window.PalmSystem.setManualKeyboardEnabled(true);
     }
 
-    // Direct Instant Launch into Cinema (Zero delay, No launchpad)
-    // First try the injected local proxy, fallback to direct HTTPS if proxy unavailable
-    var proxyUrl = "http://127.0.0.1:8999/movie/browse/?lang=tamil";
-    var directUrl = "https://einthusan.tv/movie/browse/?lang=tamil";
-
-    var xhr = new XMLHttpRequest();
-    xhr.open('HEAD', 'http://127.0.0.1:8999/', true);
-    xhr.timeout = 1000;
-    xhr.onload = function() {
-      window.location.replace(proxyUrl);
-    };
-    xhr.onerror = xhr.ontimeout = function() {
-      window.location.replace(directUrl);
-    };
-    try {
-      xhr.send();
-    } catch(e) {
-      window.location.replace(proxyUrl);
-    }
+    // Direct Instant Launch through Nungu TV Engine
+    window.location.replace("http://127.0.0.1:8999/movie/browse/?lang=tamil");
   </script>
 </head>
 <body style="background-color: #080D1A; margin: 0;"></body>

@@ -1,7 +1,6 @@
 const http = require('http');
 const https = require('https');
 const url = require('url');
-const zlib = require('zlib');
 
 const PORT = 8999;
 
@@ -95,7 +94,6 @@ const INJECTED_HEAD = `
     color: #ffffff;
     border-color: #ffffff;
   }
-  /* Push main content slightly down so menu doesn't block top navbar */
   body {
     padding-top: 56px !important;
   }
@@ -146,7 +144,6 @@ const INJECTED_BODY = `
       if (bar) bar.classList.remove('hidden');
       clearTimeout(hideTimeout);
       hideTimeout = setTimeout(function() {
-        // Do not auto-hide if mouse is hovering over the bar
         if (!window._isHoveringBar) {
           if (bar) bar.classList.add('hidden');
         }
@@ -227,21 +224,27 @@ const INJECTED_BODY = `
       }
     };
 
-    // Check login state on load
-    setTimeout(function() {
+    // Check login state on load and perform automatic login
+    function checkLoginStatus() {
       var userPopup = document.getElementById('login-popup');
       var isLoggedOut = !userPopup || !userPopup.getAttribute('data-user') || userPopup.getAttribute('data-user') === '';
       var btn = document.getElementById('ntv-login-btn');
       if (isLoggedOut) {
         if (btn) btn.textContent = '🔑 Sign In';
-        // Auto-login proactively if login inputs are in the DOM
-        if (document.getElementById('login-email')) {
+        // Auto-login proactively!
+        if (window.Page && window.Page.send) {
+          console.log('[Nungu TV] Triggering background auto-login...');
+          window.Page.send('Login', {Email: accountEmail, Password: accountPass});
+          if (btn) btn.textContent = '✓ Logged In';
+        } else if (document.getElementById('login-email')) {
           window._doNunguLogin();
         }
       } else {
-        if (btn) btn.textContent = '✓ Logged In';
+        if (btn) btn.textContent = '✓ ' + (userPopup.getAttribute('data-user') || 'Logged In');
       }
-    }, 1500);
+    }
+
+    setTimeout(checkLoginStatus, 1000);
 
     // 5. 10-MINUTE PLAYBACK WATCHDOG
     setInterval(function() {
@@ -290,29 +293,43 @@ const server = http.createServer((req, res) => {
 
   const proxyReq = https.request(options, (proxyRes) => {
     const headers = { ...proxyRes.headers };
+    // STRIP BLOCKING HEADERS
     delete headers['x-frame-options'];
     delete headers['content-security-policy'];
     headers['access-control-allow-origin'] = '*';
     headers['access-control-allow-credentials'] = 'true';
 
+    // REWRITE COOKIES TO WORK ON LOCALHOST / 127.0.0.1
+    if (headers['set-cookie']) {
+      headers['set-cookie'] = headers['set-cookie'].map(cookieStr => {
+        return cookieStr
+          .replace(/;\s*domain=[^;]+/gi, '')
+          .replace(/;\s*secure/gi, '')
+          .replace(/;\s*samesite=[^;]+/gi, '; SameSite=Lax');
+      });
+    }
+
+    // REWRITE 307 / 302 REDIRECT LOCATIONS
+    if (headers['location'] && headers['location'].startsWith('https://einthusan.tv')) {
+      headers['location'] = headers['location'].replace('https://einthusan.tv', '');
+    }
+
     const contentType = headers['content-type'] || '';
     const isHtml = contentType.includes('text/html');
 
     if (isHtml) {
-      delete headers['content-length']; // Content length changes after injection
+      delete headers['content-length'];
       res.writeHead(proxyRes.statusCode, headers);
 
       let body = '';
       proxyRes.setEncoding('utf8');
       proxyRes.on('data', chunk => { body += chunk; });
       proxyRes.on('end', () => {
-        // Inject head styles
         if (body.includes('</head>')) {
           body = body.replace('</head>', INJECTED_HEAD + '</head>');
         } else {
           body = INJECTED_HEAD + body;
         }
-        // Inject body elements & script
         if (body.includes('</body>')) {
           body = body.replace('</body>', INJECTED_BODY + '</body>');
         } else {
@@ -336,5 +353,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`Nungu TV Local Proxy with Top Bar active on http://127.0.0.1:${PORT}`);
+  console.log(`Nungu TV Local Proxy with Cookie Rewriting & Top Bar active on http://127.0.0.1:${PORT}`);
 });
