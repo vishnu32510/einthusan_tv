@@ -50,3 +50,7 @@ app.*.map.json
 # Environment & Firebase local cache
 .env
 .firebase/
+
+# Local distribution binaries
+dist/*.apk
+dist/*.ipk
