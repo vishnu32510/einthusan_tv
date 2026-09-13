@@ -10,5 +10,7 @@
   "resolution": "1920x1080",
   "requiredPermissions": [
     "network"
-  ]
+  ],
+  "trustExternal": true,
+  "handlesRelaunch": true
 }

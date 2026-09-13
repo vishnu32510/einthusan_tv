@@ -2,79 +2,169 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=1920, user-scalable=no">
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
   <title>Nungu TV</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
       background-color: #080D1A;
-      color: #ffffff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
       overflow: hidden;
     }
-    .logo {
-      width: 130px;
-      height: 130px;
-      border-radius: 28px;
-      box-shadow: 0 16px 48px rgba(229, 9, 20, 0.45);
-      margin-bottom: 28px;
+    #tvFrame {
+      width: 100vw;
+      height: 100vh;
+      border: none;
+      display: block;
     }
-    h1 {
-      font-size: 38px;
-      font-weight: 900;
-      letter-spacing: 3px;
-      margin-bottom: 10px;
-      background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    p {
-      color: #94a3b8;
-      font-size: 18px;
+    #tvStatusOverlay {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(8, 13, 26, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(229, 9, 20, 0.4);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-family: -apple-system, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
       letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 999999;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
     }
-    .spinner {
-      margin-top: 36px;
-      width: 44px;
-      height: 44px;
-      border: 3px solid rgba(255, 255, 255, 0.1);
-      border-top-color: #e50914;
+    .status-dot {
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
     }
   </style>
 </head>
 <body>
-  <img src="largeIcon.png" class="logo" alt="Nungu TV">
-  <h1>NUNGU TV</h1>
-  <p>Connecting to Cinema Stream...</p>
-  <div class="spinner"></div>
+  <iframe 
+    id="tvFrame" 
+    src="https://einthusan.tv/movie/browse/?lang=tamil"
+    allow="autoplay; fullscreen; encrypted-media"
+    allowfullscreen>
+  </iframe>
+  
+  <div id="tvStatusOverlay">
+    <div class="status-dot"></div>
+    <span id="statusText">Nungu Watchdog & Auto-Login Active</span>
+  </div>
 
   <script>
-    // LG webOS Remote Back Button handler (Key code 461)
+    // Remote Back Button handler for LG webOS (Key code 461)
     window.addEventListener('keydown', function(e) {
       if (e.keyCode === 461) {
+        try {
+          var frame = document.getElementById('tvFrame');
+          if (frame && frame.contentWindow && frame.contentWindow.history.length > 1) {
+            frame.contentWindow.history.back();
+            return;
+          }
+        } catch(err) {}
         if (window.history.length > 1) {
           window.history.back();
-        } else {
+        } else if (window.close) {
           window.close();
         }
       }
     });
 
-    // Seamless top-level navigation to Einthusan
+    // Auto-Login & Playback Watchdog configuration
+    var accountEmail = 'vishnu32510@gmail.com';
+    var accountPass = 'WHeSHRA!u8mL3Xc';
+
+    function updateStatus(msg, color) {
+      var txt = document.getElementById('statusText');
+      if (txt) txt.textContent = msg;
+      var dot = document.querySelector('.status-dot');
+      if (dot && color) {
+        dot.style.background = color;
+        dot.style.boxShadow = '0 0 10px ' + color;
+      }
+      var pill = document.getElementById('tvStatusOverlay');
+      if (pill) pill.style.opacity = '1';
+    }
+
+    function runWatchdog() {
+      try {
+        var frame = document.getElementById('tvFrame');
+        if (!frame) return;
+        
+        var doc = frame.contentDocument;
+        var win = frame.contentWindow;
+        if (!doc) return;
+
+        // 1. Check Login Popup & Auto-Fill
+        var userPopup = doc.getElementById('login-popup');
+        var isLoggedOut = !userPopup || !userPopup.getAttribute('data-user') || userPopup.getAttribute('data-user') === '';
+        var emailInput = doc.getElementById('login-email');
+        var passInput = doc.getElementById('login-password');
+        var submitBtn = doc.getElementById('login-submit');
+
+        if (isLoggedOut && emailInput && passInput && submitBtn) {
+          if (!emailInput.value || emailInput.value !== accountEmail) {
+            emailInput.value = accountEmail;
+            passInput.value = accountPass;
+            emailInput.dispatchEvent(new Event('change', { bubbles: true }));
+            passInput.dispatchEvent(new Event('input', { bubbles: true }));
+            submitBtn.click();
+            updateStatus('Auto-logged in as ' + accountEmail, '#10b981');
+            console.log('[Nungu TV] Auto-login triggered for ' + accountEmail);
+            setTimeout(function() {
+              if (win.$ && win.$.magnificPopup) {
+                win.$.magnificPopup.close();
+              }
+            }, 600);
+          }
+        }
+
+        // 2. Dismiss offer and promo modals
+        var offerClose = doc.getElementById('pn-offer-close');
+        if (offerClose && offerClose.offsetParent !== null) offerClose.click();
+
+        var premUnderstand = doc.getElementById('pn-understand');
+        if (premUnderstand && premUnderstand.offsetParent !== null) premUnderstand.click();
+
+        var premClose = doc.getElementById('pn-close');
+        if (premClose && premClose.offsetParent !== null) premClose.click();
+
+        // 3. Auto-resume video if paused by modal
+        var video = doc.querySelector('video') || doc.getElementById('UIVideoPlayer');
+        if (video && video.paused && !video.ended && video.currentTime > 5) {
+          var blocking = doc.querySelector('.mfp-wrap, .mfp-bg');
+          if (blocking) {
+            if (win.$ && win.$.magnificPopup) {
+              win.$.magnificPopup.close();
+            }
+            blocking.remove();
+            video.play().catch(function(e) {});
+          }
+        }
+      } catch(e) {
+        // Cross-origin restriction fallback
+        console.warn('[Nungu TV] Watchdog access notice:', e);
+      }
+    }
+
+    // Run watchdog every 1 second continuously
+    setInterval(runWatchdog, 1000);
+
+    // Hide status indicator after 5 seconds
     setTimeout(function() {
-      window.location.replace("https://einthusan.tv/movie/browse/?lang=tamil");
-    }, 500);
+      var pill = document.getElementById('tvStatusOverlay');
+      if (pill) pill.style.opacity = '0';
+    }, 5000);
   </script>
 </body>
 </html>
