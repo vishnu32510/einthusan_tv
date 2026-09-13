@@ -99,6 +99,37 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
             }
           },
           onNavigationRequest: (NavigationRequest request) {
+            final uri = Uri.tryParse(request.url);
+            if (uri != null) {
+              final host = uri.host.toLowerCase();
+
+              // Whitelist allowed legitimate domains
+              final isAllowed = host.contains('einthusan') ||
+                  host.contains('accounts.google') ||
+                  host.contains('facebook.com') ||
+                  host.contains('gstatic.com') ||
+                  request.url.startsWith('about:blank');
+
+              // Blacklist known ad / popunder / redirect networks
+              final isAdDomain = host.contains('doubleclick') ||
+                  host.contains('googlesyndication') ||
+                  host.contains('adnxs') ||
+                  host.contains('vntsm') ||
+                  host.contains('inmobi') ||
+                  host.contains('getpublica') ||
+                  host.contains('popads') ||
+                  host.contains('onclick') ||
+                  host.contains('adsterra') ||
+                  host.contains('propeller') ||
+                  host.contains('bet365') ||
+                  host.contains('adservice') ||
+                  host.contains('traffic');
+
+              if (!isAllowed || isAdDomain) {
+                // Block navigation to external ad / popunder URL
+                return NavigationDecision.prevent;
+              }
+            }
             return NavigationDecision.navigate;
           },
         ),
@@ -121,9 +152,14 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
   void _injectTvOptimizations() {
     _controller.runJavaScript('''
       (function() {
-        // 1. Intercept window.open so popup auth/links stay inside the TV webview
+        // 1. Intercept window.open: allow legitimate auth/einthusan links, KILL ad popups
         window.open = function(url) {
-          if (url) { window.location.href = url; }
+          if (url) {
+            var lower = url.toLowerCase();
+            if (lower.includes('einthusan') || lower.includes('google.com') || lower.includes('facebook.com')) {
+              window.location.href = url;
+            }
+          }
           return null;
         };
 
@@ -186,7 +222,25 @@ class _TvBrowserScreenState extends State<TvBrowserScreen>
           }, 600);
         }
 
-        // 5. Auto dismiss cookie consent / GDPR banners if present
+        // 5. Continuous MutationObserver: actively search and remove dynamically inserted ads
+        var adSelectors = [
+          '.adspace-lb', '[id*="venatus"]', '[class*="adspace"]', '[data-id*="goadx"]',
+          '.qc-cmp2-container', '#cmp-modal', 'iframe[src*="ad"]', 'iframe[src*="sync"]'
+        ];
+        function purgeAds() {
+          adSelectors.forEach(function(sel) {
+            document.querySelectorAll(sel).forEach(function(node) {
+              node.remove();
+            });
+          });
+        }
+        purgeAds();
+        try {
+          var observer = new MutationObserver(purgeAds);
+          observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+        } catch(e) {}
+
+        // 6. Auto dismiss cookie consent / GDPR banners if present
         var cmpButtons = document.querySelectorAll('button[class*="agree"], button[id*="agree"], .qc-cmp2-summary-buttons button');
         if (cmpButtons.length > 0) {
           cmpButtons[0].click();
